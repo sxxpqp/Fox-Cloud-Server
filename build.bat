@@ -1,0 +1,5 @@
+::±‡“Î
+mvn clean install
+
+::‘›Õ£
+pause

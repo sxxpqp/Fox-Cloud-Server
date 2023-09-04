@@ -1,0 +1,13 @@
+[Unit]
+Description=test
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/opt/fox-cloud-server/shell/startup.sh
+ExecReload=
+ExecStop=/opt/fox-cloud-server/shell/shutdown.sh
+ 
+
+[Install]
+WantedBy=multi-user.target
