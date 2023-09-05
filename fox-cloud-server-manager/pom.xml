@@ -16,6 +16,7 @@
 
     <modules>
         <module>fox-cloud-server-manager-system</module>
+        <module>fox-cloud-server-manager-repository</module>
         <module>fox-cloud-server-manager-service</module>
     </modules>
 

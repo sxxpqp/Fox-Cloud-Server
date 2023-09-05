@@ -1,67 +1,35 @@
-# fox-edge-server
+<p align="center">
+	<img alt="logo" src="http://www.fox-tech.cn/images/favicon.png">
+</p>
+<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">灵狐技术</h1>
 
-#### 介绍
-foxsteam.net的边缘服务器
+# 介绍
 
-#### 软件架构
-软件架构说明
-
-
-#### 安装教程
-
-1.  该服务职能在LINUX环境运行，所以需要远程调试
-2.  远程调试的配置，不要参考简单网上的配置，因为linux的默认端口是环回端口，无法远程连接
-3.  linux侧的启动命令，必须强制指明IP地址，例如:
-java -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=192.168.241.128:5005 fox-edge-server-service-0.0.1.jar
-
-#### 使用说明
-
-1.  打开串口
-http://192.168.241.128:9001/edge-server/reload
-GET
-返回：
-{
-    "msg": "操作成功",
-    "code": 200
-}
-
-2.  发送数据
-http://192.168.241.128:9001/edge-server/send
-POST
-发送
-{
-	"name": "ttyS1",
-	"send": "b0 01 00 fe fe",
-	"timeout": 5000
-}
-返回：
-{
-    "msg": "操作成功",
-    "code": 200,
-    "data": {
-        "name": "ttyS1",
-        "send": "b0 01 00 fe fe",
-        "recv": "b08103131613fefe",
-        "timeout": 5000
-    }
-}
-
-3.  xxxx
-4.  xxxx
-
-#### 参与贡献
-
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+> **Fox-Edge** 和 **Fox-Cloud** 是[灵狐技术](http://www.fox-tech.cn/)
+为物联网企业与开发者们提供的边缘计算方案以及配套产品
 
 
-#### 特技
+## 背景
+当前物联网的现场设备，普遍有数据上企业数据中心/数据云的集中管理需求。<br>
+企业用户在使用 **Fox-Edge** 之后，可以跟 **灵狐技术** 提供的 [Fox-Cloud](http://cloud.fox-tech.cn/) 进行互相协作，
+不断的获得灵狐技术所提供的组件部署和更新管理服务，以及数据湖服务。<br>
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+部分企业用户，考虑到自己的商用环境是一个对外隔绝的内网环境，并不能连接到  **灵狐技术** 在公网侧提供的 [Fox-Cloud](http://cloud.fox-tech.cn/)  云端服务。
+它们希望在自己的内网环境能够部署一套私有的 **Fox-Cloud** 服务，并会有各种定制化的开发需求。<br>
+
+考虑到这部分企业用户的客观需要， **灵狐技术** 决定对将 **Fox-Cloud** 进行开源。为它们直接提供代码的方式，来满足这部分企业用户的私有部署和定制化需求。
+
+## 约定
+为了避免**Fox-Edge**社区的撕裂，获得Fox-Cloud源码的企业用户，只能将该服务部署在自己项目的现场内网之中，为自己项目现场提供私有服务。请勿将私有部署的
+**Fox-Edge**在公网侧，作为公有云服务为第三方用户提供服务。<br>
+详细内容可以看随源码附带的授权协议文件 LICENSE.RTF。
+
+
+## 架构
+为了快速上线 **Fox-Cloud** 服务，  **灵狐技术** 并不认为从头构建一套用户、权限管理框架是自己的核心价值，所以在构建**Fox-Cloud** 云服务的时候，
+选择[若依框架](http://www.ruoyi.vip/) 作为自己的应用框架， **Fox-Cloud** 作为若依框架中的应用服务，进行安装部署。<br>
+<br>
+在部署 **Fox-Cloud** 之前，请先下载安装和部署[若依框架](http://www.ruoyi.vip/) 框架，然后再部署和配置 **Fox-Cloud** 服务。<br>
+<br>
+考虑到很多企业用户有自己的应用框架，并不会引入其他应用框架，**Fox-Cloud** 并不跟 **若依框架** 紧密耦合，仅仅是依赖它的网关的权限管理和路由转发，基本上是
+高度独立的服务。企业用户可以轻易的将**Fox-Cloud** 剥离出来，应用到自己企业的应用框架之中，成为自己企业云框架的一个服务。
