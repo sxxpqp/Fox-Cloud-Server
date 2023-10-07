@@ -16,7 +16,7 @@
     <properties>
         <!-- fox-edge-server version -->
         <revision>1.0.0</revision>
-        <fox-edge-server.version>1.0.1</fox-edge-server.version>
+        <fox-edge-server.version>1.0.3</fox-edge-server.version>
         <fox-cloud-server.version>1.0.0</fox-cloud-server.version>
         <!-- ruoyi version -->
         <ruoyi.version>3.6.2</ruoyi.version>

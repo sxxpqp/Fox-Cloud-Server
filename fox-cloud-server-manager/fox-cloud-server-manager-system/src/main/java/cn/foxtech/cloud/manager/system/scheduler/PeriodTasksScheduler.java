@@ -27,14 +27,9 @@ public class PeriodTasksScheduler extends PeriodTaskScheduler {
     @Autowired
     private CleanCacheTask cleanCacheTask;
 
-    @Autowired
-    private CleanLogsTask cleanLogsTask;
-
-
     public void initialize() {
         this.insertPeriodTask(this.edgeServerTask);
         this.insertPeriodTask(this.gcJavaProcessTask);
         this.insertPeriodTask(this.cleanCacheTask);
-        this.insertPeriodTask(this.cleanLogsTask);
     }
 }

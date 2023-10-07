@@ -43,12 +43,36 @@ public class RepoCompEntity extends BaseModel {
     private String component;
 
     /**
-     * 最新版本
+     * 协议版本
+     * 对于解码器来说，就是解码器协议版本，也就是名空间"cn.foxtech.device.protocol.v1.cjt188"中的这个v1
+     */
+    private String modelVersion;
+
+    /**
+     * 厂商信息：解码器的厂商信息
+     */
+    private String manufacturer;
+
+    /**
+     * 设备型号：解码器的厂商信息
+     */
+    private String deviceType;
+    /**
+     * 名空间信息：解码器占用的名空间信息
+     */
+    private String namespace;
+
+    /**
+     * JAR包上的信息
+     */
+    private RepoJarEntity jarEntity;
+    /**
+     * 软件版本：最新版本
      */
     private RepoCompVerEntity lastVersion;
 
     /**
-     * 历史版本
+     * 软件版本：历史版本
      */
     private List<RepoCompVerEntity> versions = new ArrayList<>();
 
@@ -56,5 +80,10 @@ public class RepoCompEntity extends BaseModel {
      * 描述
      */
     private String description;
+
+    /**
+     * 权重：排序使用，让某些比较重要的服务，优先置顶
+     */
+    private Integer weight = 0;
 
 }

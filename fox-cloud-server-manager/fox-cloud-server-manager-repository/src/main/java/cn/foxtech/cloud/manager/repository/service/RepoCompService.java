@@ -49,6 +49,7 @@ public class RepoCompService {
         indexFields.add(ConstantRepoComp.field_model_type);
         indexFields.add(ConstantRepoComp.field_model_name);
         indexFields.add(ConstantRepoComp.field_group_name);
+        indexFields.add(ConstantRepoComp.field_weight);
 
         // 创建数据库表：如果不存在则创建，存在则跳过
         this.mongoHelper.createCollection(ConstantRepoComp.field_collection_name, indexFields);
@@ -65,6 +66,9 @@ public class RepoCompService {
         CriteriaAndWrapper andWrapper = new CriteriaAndWrapper();
         if (param.containsKey(ConstantRepoComp.field_model_type)) {
             andWrapper.eq(ConstantRepoComp.field_model_type, param.get(ConstantRepoComp.field_model_type));
+        }
+        if (param.containsKey(ConstantRepoComp.field_model_version)) {
+            andWrapper.eq(ConstantRepoComp.field_model_version, param.get(ConstantRepoComp.field_model_version));
         }
         if (param.containsKey(ConstantRepoComp.field_component)) {
             andWrapper.eq(ConstantRepoComp.field_component, param.get(ConstantRepoComp.field_component));
@@ -92,7 +96,6 @@ public class RepoCompService {
         return andWrapper;
     }
 
-
     public Map<String, Object> queryPageList(String userName, Map<String, Object> body) {
         Integer pageNum = (Integer) body.get(Constant.field_page_num);
         Integer pageSize = (Integer) body.get(Constant.field_page_size);
@@ -117,7 +120,7 @@ public class RepoCompService {
         page.setQueryCount(true);
         page.setCurr(pageNum);
         page.setLimit(pageSize);
-        SortBuilder sortBuilder = new SortBuilder(EdgeEntity::getId, Sort.Direction.ASC);
+        SortBuilder sortBuilder = new SortBuilder(RepoCompEntity::getWeight, Sort.Direction.DESC);
         Page<RepoCompEntity> result = this.mongoHelper.findPage(criteriaWrapper, sortBuilder, page, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
 
         // 将结果返回
@@ -130,14 +133,18 @@ public class RepoCompService {
             this.verifyRepoCompVerEntity(result.getList());
         }
 
+
         // 更新lastVersion信息
-        this.extendLastVersion(result.getList());
+        for (RepoCompEntity entity : result.getList()) {
+            this.extendLastVersion(entity);
+        }
 
         return data;
     }
 
-    private void extendLastVersion(List<RepoCompEntity> entityList) {
-        for (RepoCompEntity entity : entityList) {
+
+    public void extendLastVersion(RepoCompEntity entity) {
+        {
             long lastVersion = 0L;
 
             // 找最大版本号的版本
@@ -150,7 +157,7 @@ public class RepoCompService {
             }
 
             if (lastVersion == 0L) {
-                continue;
+                return;
             }
 
             // 在多个最大版本号的版本中，有效找master版本
@@ -178,11 +185,13 @@ public class RepoCompService {
         // 构造查询过滤器
         CriteriaWrapper criteriaWrapper = this.buildWrapper(userName, groupNames, body);
 
-        SortBuilder sortBuilder = new SortBuilder(EdgeEntity::getId, Sort.Direction.ASC);
+        SortBuilder sortBuilder = new SortBuilder(RepoCompEntity::getWeight, Sort.Direction.DESC);
         List<RepoCompEntity> entityList = this.mongoHelper.findListByQuery(criteriaWrapper, sortBuilder, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
 
         // 填充lastVersion信息
-        this.extendLastVersion(entityList);
+        for (RepoCompEntity entity : entityList) {
+            this.extendLastVersion(entity);
+        }
 
         // 剔除版本信息为空的数据
         List<RepoCompEntity> result = new ArrayList<>();
@@ -195,6 +204,65 @@ public class RepoCompService {
         }
 
         return result;
+    }
+
+    public RepoCompVerEntity makeVersion(RepoCompEntity compEntity, String component, String fileName, String md5Txt, long fileSize) {
+        long time = System.currentTimeMillis();
+
+
+        if (compEntity.getModelType().equals("decoder")) {
+            // 场景1：decoder的版本信息已经存在老的配置项目，则更新该项目的内容
+            for (RepoCompVerEntity verEntity : compEntity.getVersions()) {
+                if (verEntity.getVersion().equals(compEntity.getJarEntity().getProperty().getVersion())) {
+                    verEntity.setStage(ConstantRepoCompVer.value_stage_master);
+                    verEntity.setComponent(component);
+                    verEntity.setDescription("");
+                    verEntity.setCreateTime(time);
+                    verEntity.setUpdateTime(time);
+                    verEntity.setPathName(fileName);
+                    verEntity.setMd5(md5Txt);
+                    verEntity.setFileSize(fileSize);
+                    return verEntity;
+                }
+            }
+
+            // 场景2：decoder的版本信息不存在该项目，则新增一个版本号项目，并且该版本好使用的是jar文件的版本好
+            RepoCompVerEntity verEntity = new RepoCompVerEntity();
+            verEntity.setVersion(compEntity.getJarEntity().getProperty().getVersion());
+            verEntity.setStage(ConstantRepoCompVer.value_stage_master);
+            verEntity.setComponent(component);
+            verEntity.setDescription("");
+            verEntity.setCreateTime(time);
+            verEntity.setUpdateTime(time);
+            verEntity.setPathName(fileName);
+            verEntity.setMd5(md5Txt);
+            verEntity.setFileSize(fileSize);
+
+            // 追加版本
+            compEntity.getVersions().add(0, verEntity);
+
+            return verEntity;
+        } else {
+            // 场景3：非decoder的其他类型，一概新增版本项目
+            long lastMasterVersion = this.newLastMasterVersion(compEntity.getVersions());
+
+            RepoCompVerEntity verEntity = new RepoCompVerEntity();
+            verEntity.setVersion(this.convertVersion(lastMasterVersion));
+            verEntity.setStage(ConstantRepoCompVer.value_stage_master);
+            verEntity.setComponent(component);
+            verEntity.setDescription("");
+            verEntity.setCreateTime(time);
+            verEntity.setUpdateTime(time);
+            verEntity.setPathName(fileName);
+            verEntity.setMd5(md5Txt);
+            verEntity.setFileSize(fileSize);
+
+            // 追加版本
+            compEntity.getVersions().add(0, verEntity);
+
+            return verEntity;
+        }
+
     }
 
     public long newLastMasterVersion(List<RepoCompVerEntity> versions) {
@@ -235,15 +303,50 @@ public class RepoCompService {
         }
     }
 
-    public RepoCompEntity queryRepoCompEntity(String modelType, String modelName) {
+    public RepoCompEntity queryRepoCompEntity(String modelType, String modelName, String modelVersion) {
         // 构造查询过滤器
         CriteriaAndWrapper criteriaAndWrapper = new CriteriaAndWrapper();
         criteriaAndWrapper.eq(RepoCompEntity::getModelType, modelType);
         criteriaAndWrapper.eq(RepoCompEntity::getModelName, modelName);
+        criteriaAndWrapper.eq(RepoCompEntity::getModelVersion, modelVersion);
 
         // 检查：该模块是否已经存在
         return this.mongoHelper.findOneByQuery(criteriaAndWrapper, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
     }
+
+    public List<RepoCompEntity> queryEntityList(Map<String, Object> body) {
+        String uuid = (String) body.get(ConstantRepoComp.field_uuid);
+        String modelName = (String) body.get(ConstantRepoComp.field_model_name);
+        String modelType = (String) body.get(ConstantRepoComp.field_model_type);
+        String description = (String) body.get(ConstantRepoComp.field_description);
+        String modelVersion = (String) body.get(ConstantRepoComp.field_model_version);
+        List<String> modelNames = (List<String>) body.get(ConstantRepoComp.field_model_names);
+
+        CriteriaAndWrapper andWrapper = new CriteriaAndWrapper();
+
+        // 选填参数：uuid/name/description/keyWords
+        if (!MethodUtils.hasEmpty(uuid)) {
+            andWrapper.eq(ConstantRepoComp.field_uuid, uuid);
+        }
+        if (!MethodUtils.hasEmpty(modelName)) {
+            andWrapper.eq(ConstantRepoComp.field_model_name, modelName);
+        }
+        if (!MethodUtils.hasEmpty(modelType)) {
+            andWrapper.eq(ConstantRepoComp.field_model_type, modelType);
+        }
+        if (!MethodUtils.hasEmpty(description)) {
+            andWrapper.eq(ConstantRepoComp.field_description, description);
+        }
+        if (!MethodUtils.hasEmpty(modelVersion)) {
+            andWrapper.eq(ConstantRepoComp.field_model_version, modelVersion);
+        }
+        if (!MethodUtils.hasEmpty(modelNames)) {
+            andWrapper.in(ConstantRepoComp.field_model_name, modelNames);
+        }
+
+        return this.mongoHelper.findListByQuery(andWrapper, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
+    }
+
 
     public void insertRepoCompEntity(RepoCompEntity entity) {
         if (MethodUtils.hasEmpty(entity.getOwnerId())) {
@@ -254,6 +357,7 @@ public class RepoCompService {
         CriteriaAndWrapper criteriaAndWrapper = new CriteriaAndWrapper();
         criteriaAndWrapper.eq(RepoCompEntity::getModelType, entity.getModelType());
         criteriaAndWrapper.eq(RepoCompEntity::getModelName, entity.getModelName());
+        criteriaAndWrapper.eq(RepoCompEntity::getModelVersion, entity.getModelVersion());
 
         // 检查：该模块是否已经存在
         Long count = this.mongoHelper.findCountByQuery(criteriaAndWrapper, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
@@ -267,11 +371,13 @@ public class RepoCompService {
     public void updateRepoCompEntity(String userName, Map<String, Object> param) {
         String modelName = (String) param.get(ConstantRepoComp.field_model_name);
         String modelType = (String) param.get(ConstantRepoComp.field_model_type);
+        String modelVersion = (String) param.get(ConstantRepoComp.field_model_version);
 
         // 构造查询过滤器
         CriteriaAndWrapper criteriaAndWrapper = new CriteriaAndWrapper();
         criteriaAndWrapper.eq(RepoCompEntity::getModelType, modelType);
         criteriaAndWrapper.eq(RepoCompEntity::getModelName, modelName);
+        criteriaAndWrapper.eq(RepoCompEntity::getModelVersion, modelVersion);
 
         // 查询当前记录内容
         RepoCompEntity compEntity = this.mongoHelper.findOneByQuery(criteriaAndWrapper, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
@@ -332,11 +438,12 @@ public class RepoCompService {
         return version / 10000L + "." + version % 10000L / 100L + "." + version % 10000L % 100L;
     }
 
-    public void deleteRepoCompEntity(String userName, String modelName, String modelType) {
+    public void deleteRepoCompEntity(String userName, String modelName, String modelType, String modelVersion) {
         // 构造查询过滤器
         CriteriaAndWrapper criteriaAndWrapper = new CriteriaAndWrapper();
         criteriaAndWrapper.eq(RepoCompEntity::getModelType, modelType);
         criteriaAndWrapper.eq(RepoCompEntity::getModelName, modelName);
+        criteriaAndWrapper.eq(RepoCompEntity::getModelVersion, modelVersion);
 
         if (!userName.equals("admin")) {
             // 检查：该模块是否已经存在
@@ -359,11 +466,16 @@ public class RepoCompService {
         CriteriaAndWrapper criteriaAndWrapper = new CriteriaAndWrapper();
         criteriaAndWrapper.eq(RepoCompEntity::getModelType, compEntity.getModelType());
         criteriaAndWrapper.eq(RepoCompEntity::getModelName, compEntity.getModelName());
+        criteriaAndWrapper.eq(RepoCompEntity::getModelVersion, compEntity.getModelVersion());
 
 
         // 更新数据库信息
         UpdateBuilder updateBuilder = new UpdateBuilder();
         updateBuilder.set(RepoCompEntity::getVersions, compEntity.getVersions());
+        updateBuilder.set(RepoCompEntity::getDeviceType, compEntity.getDeviceType());
+        updateBuilder.set(RepoCompEntity::getManufacturer, compEntity.getManufacturer());
+        updateBuilder.set(RepoCompEntity::getNamespace, compEntity.getNamespace());
+        updateBuilder.set(RepoCompEntity::getJarEntity, compEntity.getJarEntity());
         this.mongoHelper.updateFirst(criteriaAndWrapper, updateBuilder, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
     }
 
@@ -389,7 +501,6 @@ public class RepoCompService {
             updateBuilder.set(RepoCompEntity::getVersions, compEntity.getVersions());
             this.mongoHelper.updateFirst(criteriaAndWrapper, updateBuilder, ConstantRepoComp.field_collection_name, RepoCompEntity.class);
         }
-
     }
 
     private boolean verifyRepoCompVerEntity(String modelType, String modelName, RepoCompVerEntity verEntity) {
@@ -431,12 +542,12 @@ public class RepoCompService {
         }
     }
 
-
-    public RepoCompVerEntity queryRepoCompVerEntity(String userName, String modelName, String modelType, String version, String stage) {
+    public RepoCompVerEntity queryRepoCompVerEntity(String userName, String modelName, String modelType, String modelVersion, String version, String stage) {
         // 构造查询过滤器
         CriteriaAndWrapper criteriaAndWrapper = new CriteriaAndWrapper();
         criteriaAndWrapper.eq(RepoCompEntity::getModelType, modelType);
         criteriaAndWrapper.eq(RepoCompEntity::getModelName, modelName);
+        criteriaAndWrapper.eq(RepoCompEntity::getModelVersion, modelVersion);
 
         // 检查：该模块是否已经存在
         RepoCompEntity compEntity = this.mongoHelper.findOneByQuery(criteriaAndWrapper, ConstantRepoComp.field_collection_name, RepoCompEntity.class);

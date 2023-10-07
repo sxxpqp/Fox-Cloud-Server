@@ -8,7 +8,7 @@ import cn.foxtech.cloud.manager.repository.constants.ConstantRepoCompVer;
 import cn.foxtech.cloud.manager.repository.entity.RepoCompEntity;
 import cn.foxtech.cloud.manager.repository.entity.RepoCompVerEntity;
 import cn.foxtech.cloud.manager.repository.service.RepoCompService;
-import cn.foxtech.common.utils.file.FileNameUtils;
+import cn.foxtech.cloud.manager.repository.service.RepoFileService;
 import cn.foxtech.common.utils.md5.MD5Utils;
 import cn.foxtech.common.utils.method.MethodUtils;
 import cn.foxtech.common.utils.osinfo.OSInfo;
@@ -30,8 +30,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/repository/component")
@@ -40,8 +45,12 @@ public class RepoCompController {
      * 正则表达式：英文字母+ ‘-’和‘_’字符
      */
     public final String REGEX_PATTERN = "^([a-zA-Z0-9]+-?+_?)+[a-zA-Z0-9]{1,255}$";
+
     @Autowired
     private RepoCompService compService;
+
+    @Autowired
+    private RepoFileService fileService;
 
     private boolean validateModelType(String modelType) {
         if ("service".equals(modelType)) {
@@ -59,6 +68,18 @@ public class RepoCompController {
         return "system".equals(modelType);
     }
 
+    private boolean validateModelVersion(String modelVersion) {
+        if (!modelVersion.startsWith("v")) {
+            return false;
+        }
+        try {
+            Integer.valueOf(modelVersion.substring(1));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     /**
      * 验证文件名
      *
@@ -73,6 +94,14 @@ public class RepoCompController {
         return filename.matches(REGEX_PATTERN);
     }
 
+    private String makeModelVersion(String modelType, String modelVersion) {
+        if (!modelType.equals(ConstantRepoComp.field_value_model_type_decoder)) {
+            return "v1";
+        }
+
+        return modelVersion;
+    }
+
     @RequiresPermissions("monitor:repo:query")
     @PostMapping("page")
     public AjaxResult getPage(@RequestBody Map<String, Object> body) {
@@ -80,14 +109,6 @@ public class RepoCompController {
             String username = SecurityUtils.getUsername();
             if (MethodUtils.hasEmpty(username)) {
                 throw new ServiceException("获得登录用户信息失败!");
-            }
-
-            Integer pageNum = (Integer) body.get(Constant.field_page_num);
-            Integer pageSize = (Integer) body.get(Constant.field_page_size);
-
-            // 检查：是否至少包含以下几个参数
-            if (MethodUtils.hasEmpty(pageNum, pageSize)) {
-                throw new ServiceException("body参数缺失:pageNum, pageSize");
             }
 
             // 查询数据
@@ -131,12 +152,13 @@ public class RepoCompController {
             String groupName = (String) body.get(ConstantRepoComp.field_group_name);
             String modelName = (String) body.get(ConstantRepoComp.field_model_name);
             String modelType = (String) body.get(ConstantRepoComp.field_model_type);
+            String modelVersion = (String) body.get(ConstantRepoComp.field_model_version);
             String component = (String) body.get(ConstantRepoComp.field_component);
             String description = (String) body.get(ConstantRepoComp.field_description);
 
             // 检查：是否至少包含以下几个参数
-            if (MethodUtils.hasEmpty(groupName, modelName, modelType, component)) {
-                throw new ServiceException("body参数缺失:groupName, modelName, modelType, component");
+            if (MethodUtils.hasEmpty(groupName, modelName, modelVersion, modelType, component)) {
+                throw new ServiceException("body参数缺失: groupName, modelName, modelVersion, modelType, component");
             }
 
             // 检查：模块名格式
@@ -144,13 +166,20 @@ public class RepoCompController {
                 throw new ServiceException("modelName只能包含英文字符和横杠和下划线字符");
             }
             // 检查：模块类型
-            if (!validateModelType(modelType)) {
-                throw new ServiceException("modelType不在定义的范围内!");
+            if (!this.validateModelType(modelType)) {
+                throw new ServiceException("modelType 不在定义的范围内!");
             }
+            // 检查：模块版本
+            if (!this.validateModelVersion(modelVersion)) {
+                throw new ServiceException("modelVersion 不是v1，v2这种格式v+整数的格式");
+            }
+            // 规范化命名：只有decoder才允许多办法，其他都是只能单一版本，也就是v1
+            modelVersion = this.makeModelVersion(modelType, modelVersion);
 
             RepoCompEntity entity = new RepoCompEntity();
             entity.setModelName(modelName.toLowerCase());
             entity.setModelType(modelType);
+            entity.setModelVersion(modelVersion);
             entity.setOwnerId(userName);
             entity.setGroupName(groupName);
             entity.setComponent(component);
@@ -176,11 +205,15 @@ public class RepoCompController {
 
             String modelName = (String) body.get(ConstantRepoComp.field_model_name);
             String modelType = (String) body.get(ConstantRepoComp.field_model_type);
+            String modelVersion = (String) body.get(ConstantRepoComp.field_model_version);
 
             // 检查：是否至少包含以下几个参数
-            if (MethodUtils.hasEmpty(modelName, modelType)) {
-                throw new ServiceException("body参数缺失:modelName, modelType");
+            if (MethodUtils.hasEmpty(modelName, modelType, modelVersion)) {
+                throw new ServiceException("body参数缺失: modelName, modelType, modelVersion");
             }
+
+            // 规范化命名：只有decoder才允许多办法，其他都是只能单一版本，也就是v1
+            modelVersion = this.makeModelVersion(modelType, modelVersion);
 
 
             // 查询数据
@@ -194,7 +227,7 @@ public class RepoCompController {
     }
 
     @DeleteMapping("entity")
-    public AjaxResult delete(String modelName, String modelType) {
+    public AjaxResult delete(String modelName, String modelType, String modelVersion) {
         try {
             String userName = SecurityUtils.getUsername();
             if (MethodUtils.hasEmpty(userName)) {
@@ -202,17 +235,20 @@ public class RepoCompController {
             }
 
             // 检查：是否至少包含以下几个参数
-            if (MethodUtils.hasEmpty(modelName, modelType)) {
-                throw new ServiceException("body参数缺失:modelName, modelType");
+            if (MethodUtils.hasEmpty(modelName, modelType, modelVersion)) {
+                throw new ServiceException("body参数缺失:modelName, modelType, modelVersion");
             }
 
+            // 规范化命名：只有decoder才允许多办法，其他都是只能单一版本，也就是v1
+            modelVersion = this.makeModelVersion(modelType, modelVersion);
+
             // 查询数据
-            this.compService.deleteRepoCompEntity(userName, modelName, modelType);
+            this.compService.deleteRepoCompEntity(userName, modelName, modelType, modelVersion);
 
             // 删除文件
             File file = new File("");
             String path = file.getAbsolutePath();
-            String modelDir = path + "/repository/" + modelType + "/" + modelName;
+            String modelDir = path + "/repository/" + modelType + "/" + modelName + "/" + modelVersion;
             if (OSInfo.isWindows()) {
                 // 删除可能存在的目录
                 modelDir = modelDir.replace("/", "\\");
@@ -222,10 +258,48 @@ public class RepoCompController {
                 ShellUtils.executeShell("rm -rf '" + modelDir + "'");
             }
 
+            // 删除空的父目录
+            this.deleteEmptyParentDir(modelDir);
+
             return AjaxResult.success();
 
         } catch (Exception e) {
             return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 删除空的父目录
+     *
+     * @param fileDir
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void deleteEmptyParentDir(String fileDir) throws IOException, InterruptedException {
+        Path path = Paths.get(fileDir);
+        File file = path.getParent().toFile();
+        if (!file.exists()) {
+            return;
+        }
+        if (!file.isDirectory()) {
+            return;
+        }
+
+        // 是否为空目录
+        if (file.list().length != 0) {
+            return;
+        }
+
+        // 切换目录
+        fileDir = file.getAbsolutePath();
+
+        if (OSInfo.isWindows()) {
+            // 删除可能存在的目录
+            fileDir = fileDir.replace("/", "\\");
+            ShellUtils.executeCmd("rd /s /q " + fileDir);
+        }
+        if (OSInfo.isLinux()) {
+            ShellUtils.executeShell("rm -rf '" + fileDir + "'");
         }
     }
 
@@ -239,17 +313,21 @@ public class RepoCompController {
 
             String modelName = (String) body.get(ConstantRepoComp.field_model_name);
             String modelType = (String) body.get(ConstantRepoComp.field_model_type);
+            String modelVersion = (String) body.get(ConstantRepoComp.field_model_version);
             String version = (String) body.get(ConstantRepoComp.field_version);
             String stage = (String) body.get(ConstantRepoCompVer.field_stage);
             String newStage = (String) body.get(ConstantRepoCompVer.field_new_stage);
 
             // 检查：是否至少包含以下几个参数
-            if (MethodUtils.hasEmpty(modelName, modelType, version, stage, newStage)) {
-                throw new ServiceException("body参数缺失:modelName, modelType, version, stage, newStage");
+            if (MethodUtils.hasEmpty(modelName, modelType, modelVersion, version, stage, newStage)) {
+                throw new ServiceException("body参数缺失:modelName, modelType, modelVersion, version, stage, newStage");
             }
 
+            // 规范化命名：只有decoder才允许多办法，其他都是只能单一版本，也就是v1
+            modelVersion = this.makeModelVersion(modelType, modelVersion);
+
             // 查找指定的实体
-            RepoCompEntity compEntity = this.compService.queryRepoCompEntity(modelType, modelName);
+            RepoCompEntity compEntity = this.compService.queryRepoCompEntity(modelType, modelName, modelVersion);
             if (compEntity == null) {
                 throw new ServiceException("指定的实体不存在!");
             }
@@ -284,7 +362,7 @@ public class RepoCompController {
     }
 
     @DeleteMapping("version")
-    public AjaxResult deleteVersion(String modelName, String modelType, String version, String stage) {
+    public AjaxResult deleteVersion(String modelName, String modelType, String modelVersion, String version, String stage) {
         try {
             String userName = SecurityUtils.getUsername();
             if (MethodUtils.hasEmpty(userName)) {
@@ -292,12 +370,15 @@ public class RepoCompController {
             }
 
             // 检查：是否至少包含以下几个参数
-            if (MethodUtils.hasEmpty(modelName, modelType, version, stage)) {
-                throw new ServiceException("body参数缺失:modelName, modelType, version, stage");
+            if (MethodUtils.hasEmpty(modelName, modelType, modelVersion, version, stage)) {
+                throw new ServiceException("body参数缺失:modelName, modelType, modelVersion, version, stage");
             }
 
+            // 规范化命名：只有decoder才允许多办法，其他都是只能单一版本，也就是v1
+            modelVersion = this.makeModelVersion(modelType, modelVersion);
+
             // 查找指定的实体
-            RepoCompEntity compEntity = this.compService.queryRepoCompEntity(modelType, modelName);
+            RepoCompEntity compEntity = this.compService.queryRepoCompEntity(modelType, modelName, modelVersion);
             if (compEntity == null) {
                 throw new ServiceException("指定的实体不存在!");
             }
@@ -326,7 +407,7 @@ public class RepoCompController {
             File file = new File("");
             String path = file.getAbsolutePath();
             String modelDir = path + "/repository/" + modelType + "/" + modelName;
-            String fileDir = modelDir + "/" + version;
+            String fileDir = modelDir + "/" + compEntity.getModelVersion() + "/" + version;
 
             // 删除该版本对应的本地文件
             String fileName = fileDir + "/" + pathName;
@@ -334,7 +415,7 @@ public class RepoCompController {
             delFile.delete();
 
             // 如果版本位空，那么删除空目录
-            if (compEntity.getVersions().isEmpty()){
+            if (compEntity.getVersions().isEmpty()) {
                 if (OSInfo.isWindows()) {
                     // 删除可能存在的目录
                     fileDir = fileDir.replace("/", "\\");
@@ -354,7 +435,7 @@ public class RepoCompController {
     }
 
     @PostMapping("/upload")
-    public AjaxResult uploadVersion(@RequestParam("file") MultipartFile uploadFile, @RequestParam("modelName") String modelName, @RequestParam("modelType") String modelType, @RequestParam("component") String component) {
+    public AjaxResult uploadVersion(@RequestParam("file") MultipartFile uploadFile, @RequestParam("modelName") String modelName, @RequestParam("modelType") String modelType, @RequestParam("modelVersion") String modelVersion, @RequestParam("component") String component) {
         try {
             String userName = SecurityUtils.getUsername();
             if (MethodUtils.hasEmpty(userName)) {
@@ -362,12 +443,15 @@ public class RepoCompController {
             }
 
             // 检查：是否至少包含以下几个参数
-            if (MethodUtils.hasEmpty(modelName, modelType, component)) {
-                throw new ServiceException("body参数缺失:modelName, modelType,component");
+            if (MethodUtils.hasEmpty(modelName, modelType, modelVersion, component)) {
+                throw new ServiceException("body参数缺失:modelName, modelType, modelVersion, component");
             }
 
+            // 规范化命名：只有decoder才允许多办法，其他都是只能单一版本，也就是v1
+            modelVersion = this.makeModelVersion(modelType, modelVersion);
+
             // 查找指定的实体
-            RepoCompEntity compEntity = this.compService.queryRepoCompEntity(modelType, modelName);
+            RepoCompEntity compEntity = this.compService.queryRepoCompEntity(modelType, modelName, modelVersion);
             if (compEntity == null) {
                 throw new ServiceException("指定的实体不存在!");
             }
@@ -385,42 +469,26 @@ public class RepoCompController {
             Long time = System.currentTimeMillis();
             String currentTime = new SimpleDateFormat("yyyyMMddHHmmss").format(time);
             String fileName = modelName + "-" + currentTime;
-            fileName = this.saveFile(uploadFile, modelType, path + "/repository/" + modelType + "/" + modelName, fileName);
-
+            fileName = this.fileService.saveFile(compEntity, uploadFile, path + "/repository/" + modelType + "/" + modelName + "/" + modelVersion, fileName);
 
             // 计算MD5验证码
-            File md5File = new File(path + "/repository/" + modelType + "/" + modelName + "/" + fileName);
+            File md5File = new File(path + "/repository/" + modelType + "/" + modelName + "/" + modelVersion + "/" + fileName);
             String md5Txt = MD5Utils.getMD5Txt(md5File);
             long fileSize = md5File.length();
 
             // 最新的master版本号
-            long lastMasterVersion = this.compService.newLastMasterVersion(compEntity.getVersions());
-
-
-            RepoCompVerEntity verEntity = new RepoCompVerEntity();
-            verEntity.setVersion(this.compService.convertVersion(lastMasterVersion));
-            verEntity.setStage(ConstantRepoCompVer.value_stage_master);
-            verEntity.setComponent(component);
-            verEntity.setDescription("");
-            verEntity.setCreateTime(time);
-            verEntity.setUpdateTime(time);
-            verEntity.setPathName(fileName);
-            verEntity.setMd5(md5Txt);
-            verEntity.setFileSize(fileSize);
-
-            // 追加版本
-            compEntity.getVersions().add(0, verEntity);
+            RepoCompVerEntity verEntity = this.compService.makeVersion(compEntity, component, fileName, md5Txt, fileSize);
 
             // 保存信息到数据库
             this.compService.updateRepoCompVerEntity(compEntity);
 
 
             // 将上传的临时文件，移动到指定目录
-            this.moveFile(modelType, modelName, verEntity);
+            this.fileService.moveFile(modelType, modelName, modelVersion, verEntity);
 
             // 删除可能存在的历史垃圾文件
-            String modelDir = path + "/repository/" + modelType + "/" + modelName;
-            this.removeFile(compEntity, modelDir);
+            String modelDir = path + "/repository/" + modelType + "/" + modelName + "/" + modelVersion;
+            this.fileService.removeFile(compEntity, modelDir);
 
 
             Map<String, Object> data = new HashMap<>();
@@ -430,152 +498,9 @@ public class RepoCompController {
             return AjaxResult.success(data);
         } catch (Exception e) {
             return AjaxResult.error(e.getMessage());
+        } finally {
+            this.fileService.cleanResidue(modelName, modelType, modelVersion);
         }
-    }
-
-    private void moveFile(String modelType, String modelName, RepoCompVerEntity verEntity) throws IOException, InterruptedException {
-        File file = new File("");
-        String path = file.getAbsolutePath();
-
-        String modelDir = path + "/repository/" + modelType + "/" + modelName;
-        String fileDir = modelDir + "/" + verEntity.getVersion();
-        if (OSInfo.isWindows()) {
-            // 删除可能存在的目录
-            fileDir = fileDir.replace("/", "\\");
-            ShellUtils.executeCmd("mkdir " + fileDir);
-
-            modelDir = modelDir.replace("/", "\\");
-            ShellUtils.executeCmd("move " + modelDir + "\\" + verEntity.getPathName() + " " + fileDir);
-        }
-        if (OSInfo.isLinux()) {
-            ShellUtils.executeShell("mkdir -p '" + fileDir + "'");
-
-            ShellUtils.executeShell("mv '" + modelDir + "/" + verEntity.getPathName() + "' '" + fileDir + "'");
-        }
-    }
-
-    /**
-     * 删除可能存在的垃圾文件
-     *
-     * @param compEntity
-     * @throws IOException
-     * @throws InterruptedException
-     */
-    private void removeFile(RepoCompEntity compEntity, String modelDir) throws IOException, InterruptedException {
-        // 根据组件的版本信息，构造应该存在的文件名
-        Set<String> fileNames = new HashSet<>();
-        for (RepoCompVerEntity entity : compEntity.getVersions()) {
-            String fullName = modelDir + "/" + entity.getVersion() + "/" + entity.getPathName();
-            fullName = fullName.replace("/", "\\");
-            fileNames.add(fullName);
-        }
-
-        // 获得本地文件名
-        List<String> localList = FileNameUtils.findFileList(modelDir, true, true);
-
-        // 检查：残存的本地垃圾，并删除
-        for (String localName : localList) {
-            localName = localName.replace("/", "\\");
-            if (fileNames.contains(localName)) {
-                continue;
-            }
-
-            // 检查：是否为目录
-            File file = new File(localName);
-            if (file.isDirectory()) {
-                continue;
-            }
-
-            // 删除垃圾文件
-            file.delete();
-        }
-    }
-
-    private String saveFile(MultipartFile multipartFile, String modelType, String filePath, String fileName) throws IOException, InterruptedException {
-        if (multipartFile.isEmpty()) {
-            throw new ServiceException("上传文件为空");
-        }
-
-        // 上传方的原始文件名
-        String originalFilename = multipartFile.getOriginalFilename();
-        // 扩展名
-        String extName = originalFilename.substring(originalFilename.lastIndexOf("."));
-        if (MethodUtils.hasEmpty(extName)) {
-            throw new ServiceException("上传文件必须为jar/tar文件");
-        }
-        if (!".jar".equalsIgnoreCase(extName) && !".tar".equalsIgnoreCase(extName) && !".gz".equalsIgnoreCase(extName)) {
-            throw new ServiceException("上传文件必须jar/tar/gz文件");
-        }
-        if (".jar".equalsIgnoreCase(extName) && !modelType.equals("decoder")) {
-            throw new ServiceException(modelType + "的上传文件必须jar文件");
-        } else if (".tar".equalsIgnoreCase(extName) && !modelType.equals("service") && !modelType.equals("template") && !modelType.equals("webpack")) {
-            throw new ServiceException(modelType + "的上传文件必须tar文件");
-        } else if (".gz".equalsIgnoreCase(extName) && !modelType.equals("system")) {
-            throw new ServiceException(modelType + "的上传文件必须gz文件");
-        }
-
-
-        File localFile = new File(filePath);
-        if (!localFile.exists()) {
-            localFile.mkdirs();
-        }
-
-        //  场景1：tar文件，直接保存
-        if (".tar".equalsIgnoreCase(extName)) {
-            File dest = new File(filePath + "/" + fileName + ".tar");
-            multipartFile.transferTo(dest);
-            return fileName + ".tar";
-        }
-        //  场景2：gz文件，直接保存
-        if (".gz".equalsIgnoreCase(extName)) {
-            if (!originalFilename.endsWith(".tar.gz")) {
-                throw new ServiceException(modelType + "的上传文件必须.tar.gz文件");
-            }
-
-            File dest = new File(filePath + "/" + fileName + ".tar.gz");
-            multipartFile.transferTo(dest);
-            return fileName + ".tar.gz";
-        }
-        // 场景3：jar文件，压缩后，再保存
-        if (".jar".equalsIgnoreCase(extName)) {
-            if (OSInfo.isWindows()) {
-                String tempName = filePath + "\\" + originalFilename;
-                tempName = tempName.replace("/", "\\");
-
-                // 删除可能存在的临时文件
-                ShellUtils.executeCmd("del /q " + tempName);
-
-                // 生成同名的本地文件
-                File dest = new File(tempName);
-                multipartFile.transferTo(dest);
-
-                // 打包成tar文件
-                ShellUtils.executeCmd("tar -cvf " + filePath + "\\" + fileName + ".tar -C " + filePath + " " + originalFilename);
-
-                // 删除临时的jar文件
-                ShellUtils.executeCmd("del /q " + tempName);
-                return fileName + ".tar";
-            }
-            if (OSInfo.isLinux()) {
-                String tempName = filePath + "/" + originalFilename;
-
-                // 删除可能存在的临时文件
-                ShellUtils.executeShell("rm -f " + tempName);
-
-                // 生成同名的本地文件
-                File dest = new File(tempName);
-                multipartFile.transferTo(dest);
-
-                // 打包成tar文件
-                ShellUtils.executeShell("tar -cvf " + filePath + "/" + fileName + ".tar -C " + filePath + " " + originalFilename);
-
-                // 删除临时的jar文件
-                ShellUtils.executeShell("rm -f " + tempName);
-                return fileName + ".tar";
-            }
-        }
-
-        return fileName + ".tar";
     }
 
     /**
@@ -595,20 +520,24 @@ public class RepoCompController {
             // 提取业务参数
             String modelName = (String) body.get(ConstantRepoComp.field_model_name);
             String modelType = (String) body.get(ConstantRepoComp.field_model_type);
+            String modelVersion = (String) body.get(ConstantRepoComp.field_model_version);
             String version = (String) body.get(ConstantRepoComp.field_version);
             String stage = (String) body.get(ConstantRepoCompVer.field_stage);
-            if (MethodUtils.hasEmpty(modelName, version, modelType, stage)) {
-                throw new ServiceException("参数不能为空:modelName, version, modelType, stage");
+            if (MethodUtils.hasEmpty(modelName, modelVersion, version, modelType, stage)) {
+                throw new ServiceException("参数不能为空:modelName, modelVersion, version, modelType, stage");
             }
 
+            // 规范化命名：只有decoder才允许多办法，其他都是只能单一版本，也就是v1
+            modelVersion = this.makeModelVersion(modelType, modelVersion);
+
             // 查询版本
-            RepoCompVerEntity verEntity = this.compService.queryRepoCompVerEntity(userName, modelName, modelType, version, stage);
+            RepoCompVerEntity verEntity = this.compService.queryRepoCompVerEntity(userName, modelName, modelType, modelVersion, version, stage);
             if (verEntity == null) {
                 throw new ServiceException("找不到该版本信息");
             }
 
             File file = new File("");
-            String fileName = file.getAbsolutePath() + "/repository/" + modelType + "/" + modelName + "/" + verEntity.getVersion() + "/" + verEntity.getPathName();
+            String fileName = file.getAbsolutePath() + "/repository/" + modelType + "/" + modelName + "/" + modelVersion + "/" + verEntity.getVersion() + "/" + verEntity.getPathName();
 
             this.downOneFile(fileName);
 

@@ -66,6 +66,18 @@
 
         <dependency>
             <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-common-utils-uuid</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-common-utils-bean</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
             <artifactId>fox-edge-server-common-utils-scheduler</artifactId>
             <version>${fox-edge-server.version}</version>
         </dependency>
@@ -94,6 +106,11 @@
             <version>${fox-edge-server.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-protocol-anno</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
 
         <!-- Mysql Connector -->
         <dependency>
@@ -107,6 +124,8 @@
             <artifactId>ruoyi-common-security</artifactId>
             <version>${ruoyi.version}</version>
         </dependency>
+
+
 
 
     </dependencies>
