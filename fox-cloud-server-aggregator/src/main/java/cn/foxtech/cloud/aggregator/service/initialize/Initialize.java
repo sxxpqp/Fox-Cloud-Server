@@ -1,6 +1,8 @@
 package cn.foxtech.cloud.aggregator.service.initialize;
 
 
+import cn.foxtech.cloud.aggregator.service.mqtt.MqttClientService;
+import cn.foxtech.cloud.aggregator.service.mqtt.MqttMessageRespond;
 import cn.foxtech.cloud.aggregator.service.scheduler.PeriodTasksScheduler;
 import cn.foxtech.cloud.aggregator.service.service.EntityManageService;
 import org.apache.log4j.Logger;
@@ -19,13 +21,23 @@ public class Initialize implements CommandLineRunner {
     private EntityManageService manageService;
 
     @Autowired
+    private MqttClientService mqttClientService;
+
+    @Autowired
     private PeriodTasksScheduler periodTasksScheduler;
+
+    @Autowired
+    private MqttMessageRespond mqttMessageRespond;
 
     @Override
     public void run(String... args) {
         logger.info("------------------------初始化开始！------------------------");
 
         this.manageService.initialize();
+
+        this.mqttClientService.initialize();
+        this.mqttMessageRespond.initialize();
+        this.mqttMessageRespond.schedule();
 
         this.periodTasksScheduler.initialize();
         this.periodTasksScheduler.schedule();

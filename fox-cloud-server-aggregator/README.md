@@ -238,4 +238,96 @@
    说明出现了需要增量同步的数据。
    以Edge为基准，查询增量差额数据，发布数据到Cloud
   ```
-	
+
+## MQTT接口
+
+mqtt接口，实际上是调用restful接口的bean对象的方法，所以它们的资源是一模一样的。只要准备下列方式，就可以通过MQTT调用restful接口
+
+- restful接口
+
+  ``` 发送请求
+    "resource": "/config/timestamp",
+    "method": "post",
+    "body": {
+        "edgeId": "BFEBFBFF000906A3",
+        "entityTypeList": ["channelEntity"]
+    }	
+  ```
+
+  ``` 返回结果
+    "resource": "/config/timestamp",
+    "method": "post",
+    "body": {
+        "edgeId": "BFEBFBFF000906A3",
+        "entityTypeList": ["channelEntity"]
+    }	
+  ```
+- mqtt接口
+
+
+  ``` 说明
+  uuid：给发送者在收到报文的时候，知道是对应哪个发送报文用的
+  resource：指的是restful接口下的resource
+  method：指的是restful接口下的post、get等方法
+  body：指的是restful接口下的body内容
+  
+  汇聚业务订阅：/fox/proxy/e2c/aggregate/#
+  返回的topic：/fox/proxy/c2e/fox-edge/{edgeId}
+  非对称的tipic，是因为edge会接收到汇聚服务和转发服务，给它发送的数据，所以用一个topic订阅来接收数据
+  
+云端：
+
+订阅：/fox/proxy/e2c/aggregate/#
+
+E->C：/fox/proxy/e2c/aggregate/BFEBFBFF000906A3  :云端能接收
+C->E：/fox/proxy/c2e/BFEBFBFF000906A3/aggregate  ：云端不会接收
+
+边缘：
+订阅：/fox/proxy/c2e/BFEBFBFF000906A3/#
+
+3->E：/fox/proxy/c2e/BFEBFBFF000906A3/forward     ：第三方发送给edge的执行请求
+E->3：/fox/proxy/e2c/forward/BFEBFBFF000906A3     ：第三方发送给edge的执行请求
+
+3rd：
+订阅：/fox/proxy/e2c/forward/#
+ 
+   ``` 
+
+  ``` 发送请求
+    
+    mqtt的发送topic：/fox/proxy/e2c/aggregate/BFEBFBFF000906A3
+  
+    body：
+    {
+    "uuid": "1b1df78266b9449c9d5705f821a2b4c1",
+    "resource": "/config/timestamp",
+    "method": "post",
+    "body": {
+        "edgeId": "BFEBFBFF000906A3",
+        "entityTypeList": ["channelEntity"]
+       }
+    }
+  ```
+
+  ``` 返回结果
+  mqtt的订阅topic：/fox/proxy/c2e/BFEBFBFF000906A3/aggregate
+  
+  body：
+  {
+    "uuid": "1b1df78266b9449c9d5705f821a2b4c1",
+    "resource": "/config/timestamp",
+    "method": "post",
+    "body": {
+        "msg": "操作成功",
+        "code": 200,
+        "data": {
+            "channelEntity": {
+                "timeStamp": "",
+                "status": ""
+            }
+        }
+    },
+    "msg": "",
+    "code": 200
+  }
+  ```

@@ -99,8 +99,20 @@
         </dependency>
 
         <dependency>
+            <groupId>net.dreamlu</groupId>
+            <artifactId>mica-mqtt-client</artifactId>
+            <version>${mica-mqtt.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>cn.fox-tech</groupId>
             <artifactId>fox-edge-server-common-utils-number</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-common-utils-uuid</artifactId>
             <version>${fox-edge-server.version}</version>
         </dependency>
 
