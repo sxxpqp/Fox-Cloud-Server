@@ -2,7 +2,6 @@ package cn.foxtech.cloud.service.initialize;
 
 
 import cn.foxtech.cloud.manager.initialize.InitializeSystem;
-import cn.foxtech.cloud.manager.social.initialize.InitializeSocial;
 import cn.foxtech.cloud.repository.initialize.InitializeRepository;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +21,6 @@ public class Initialize implements CommandLineRunner {
     @Autowired
     private InitializeRepository initializeRepository;
 
-    @Autowired
-    private InitializeSocial initializeSocial;
-
 
     @Override
     public void run(String... args) {
@@ -32,7 +28,6 @@ public class Initialize implements CommandLineRunner {
 
         this.initializeSystem.initialize();
         this.initializeRepository.initialize();
-        this.initializeSocial.initialize();
 
         logger.info("------------------------初始化结束！------------------------");
     }

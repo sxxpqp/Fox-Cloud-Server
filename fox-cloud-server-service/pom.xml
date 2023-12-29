@@ -123,12 +123,6 @@
             <version>${ruoyi.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>cn.fox-tech</groupId>
-            <artifactId>fox-cloud-server-box</artifactId>
-            <version>${fox-cloud-server.version}</version>
-        </dependency>
-
 
         <dependency>
             <groupId>cn.fox-tech</groupId>
