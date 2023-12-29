@@ -74,8 +74,8 @@ echo "开始启动：${jar_name}"
 result=$(runApp ${jar_name} ${log_nams})
 echo "启动完成：${jar_name}"
 
-jar_name=fox-cloud-server-manager-service-1.0.0.jar
-log_nams=fox-cloud-server-manager-service-1.0.0.jar.out
+jar_name=fox-cloud-server-service-1.1.0.jar
+log_nams=fox-cloud-server-service-1.1.0.jar.out
 echo "开始启动：${jar_name}"
 result=$(runApp ${jar_name} ${log_nams})
 echo "启动完成：${jar_name}"
