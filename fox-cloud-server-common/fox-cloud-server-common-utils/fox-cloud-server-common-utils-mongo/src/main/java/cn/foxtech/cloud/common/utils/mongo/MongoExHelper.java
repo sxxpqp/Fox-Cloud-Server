@@ -18,6 +18,7 @@ import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -494,6 +495,22 @@ public class MongoExHelper {
         return insertOrUpdate(collectionName, object);
     }
 
+    public UpdateResult updateById(String id, UpdateBuilder updateBuilder, String collectionName, Class<?> clazz) {
+        Long time = System.currentTimeMillis();
+
+        ObjectId objectId = new ObjectId(id);
+
+        CriteriaAndWrapper criteriaWrapper = new CriteriaAndWrapper();
+        criteriaWrapper.eq("_id", objectId);
+
+        Query query = new Query(criteriaWrapper.build());
+
+        UpdateResult updateResult = mongoTemplate.updateFirst(query, updateBuilder.toUpdate(), collectionName);
+        logUpdate(collectionName, clazz, query, updateBuilder, false, time);
+
+        return updateResult;
+    }
+
     /**
      * 根据id更新全部字段
      *
@@ -510,7 +527,7 @@ public class MongoExHelper {
         }
         Long time = System.currentTimeMillis();
         setUpdateTime(object, time);
-        mongoTemplate.save(object,collectionName);
+        mongoTemplate.save(object, collectionName);
         logSave(collectionName, object, time, false);
 
         return (String) ReflectUtil.getFieldValue(object, Constant.ID);
@@ -560,11 +577,16 @@ public class MongoExHelper {
      * @return DeleteResult 删除结果
      */
     public DeleteResult deleteById(String id, String collectionName, Class<?> clazz) {
-
         if (StrUtil.isEmpty(id)) {
             return null;
         }
-        return deleteByQuery(new CriteriaAndWrapper().eq(Constant::getId, id), collectionName, clazz);
+
+        ObjectId objectId = new ObjectId(id);
+
+        CriteriaAndWrapper criteriaWrapper = new CriteriaAndWrapper();
+        criteriaWrapper.eq("_id", objectId);
+
+        return deleteByQuery(criteriaWrapper, collectionName, clazz);
     }
 
     /**
@@ -575,12 +597,19 @@ public class MongoExHelper {
      * @return DeleteResult 删除结果
      */
     public DeleteResult deleteByIds(List<String> ids, String collectionName, Class<?> clazz) {
-
         if (ids == null || ids.size() == 0) {
             return null;
         }
 
-        return deleteByQuery(new CriteriaAndWrapper().in(Constant::getId, ids), collectionName, clazz);
+        List<ObjectId> objectIds = new ArrayList<>();
+        for (String id : ids) {
+            ObjectId objectId = new ObjectId(id);
+            objectIds.add(objectId);
+        }
+        CriteriaAndWrapper criteriaWrapper = new CriteriaAndWrapper();
+        criteriaWrapper.in("_id", objectIds);
+
+        return deleteByQuery(criteriaWrapper, collectionName, clazz);
     }
 
     /**
@@ -839,7 +868,7 @@ public class MongoExHelper {
         query.fields().include(ReflectionUtil.getFieldName(property));
 
         Long systemTime = System.currentTimeMillis();
-        List<?> list = mongoTemplate.find(query, documentClass,collectionName);
+        List<?> list = mongoTemplate.find(query, documentClass, collectionName);
         logQuery(collectionName, documentClass, query, systemTime);
 
         List<T> propertyList = extractProperty(list, ReflectionUtil.getFieldName(property), propertyClass);
@@ -862,7 +891,7 @@ public class MongoExHelper {
         query.fields().include(property);
 
         Long systemTime = System.currentTimeMillis();
-        List<?> list = mongoTemplate.find(query, documentClass,collectionName);
+        List<?> list = mongoTemplate.find(query, documentClass, collectionName);
         logQuery(collectionName, documentClass, query, systemTime);
 
         List<T> propertyList = extractProperty(list, property, propertyClass);

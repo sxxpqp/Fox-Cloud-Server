@@ -50,7 +50,7 @@ public class EdgeEntitySchemaService {
             Map<String, EdgeEntityTable> tables = this.querySchemaTable();
 
             // 检查：配置是否发生了变化
-            if (!DifferUtils.differByValue(this.schema.getTables().values(), tables.values())) {
+            if (DifferUtils.differByValue(new HashSet<>(this.schema.getTables().values()), new HashSet<>(tables.values()))) {
                 return;
             }
 

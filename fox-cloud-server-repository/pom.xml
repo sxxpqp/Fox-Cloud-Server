@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>cn.fox-tech</groupId>
+        <artifactId>fox-cloud-server</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <artifactId>fox-cloud-server-repository</artifactId>
+    <name>${project.artifactId}</name>
+    <packaging>pom</packaging>
+    <description>${project.artifactId}</description>
+
+    <modules>
+        <module>fox-cloud-server-repository-jarinfo</module>
+        <module>fox-cloud-server-repository-group</module>
+        <module>fox-cloud-server-repository-comp-files</module>
+        <module>fox-cloud-server-repository-comp-script</module>
+        <module>fox-cloud-server-repository-product</module>
+        <module>fox-cloud-server-repository-service</module>
+    </modules>
+
+
+</project>

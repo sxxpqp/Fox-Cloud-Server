@@ -15,7 +15,7 @@ fox-cloud-server-mqtt-broker-1.0.0.jar \
 --spring.redis.port=7379 \
 --spring.redis.password=12345678 \
 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/$APP_HOME/logs/error.hprof \
- >$APP_HOME/logs/start_mqtt-broker.out 2>&1 & \
+ >/dev/null 2>&1 & \
  
  
  

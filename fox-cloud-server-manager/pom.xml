@@ -1,25 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>cn.fox-tech</groupId>
         <artifactId>fox-cloud-server</artifactId>
+        <groupId>cn.fox-tech</groupId>
         <version>${revision}</version>
     </parent>
 
     <artifactId>fox-cloud-server-manager</artifactId>
     <name>${project.artifactId}</name>
-    <packaging>pom</packaging>
     <description>${project.artifactId}</description>
 
-    <modules>
-        <module>fox-cloud-server-manager-jarinfo</module>
-        <module>fox-cloud-server-manager-system</module>
-        <module>fox-cloud-server-manager-repository</module>
-        <module>fox-cloud-server-manager-service</module>
-    </modules>
+    <dependencies>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+
+        <!-- 核心模块-->
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-cloud-server-common-core</artifactId>
+            <version>${fox-cloud-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-cloud-server-common-utils-mongo</artifactId>
+            <version>${fox-cloud-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-cloud-server-common-entity</artifactId>
+            <version>${fox-cloud-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-device-domain</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-common-utils-method</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-common-utils-scheduler</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-common-utils-shell</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.fox-tech</groupId>
+            <artifactId>fox-edge-server-common-utils-number</artifactId>
+            <version>${fox-edge-server.version}</version>
+        </dependency>
+
+    </dependencies>
 
 </project>

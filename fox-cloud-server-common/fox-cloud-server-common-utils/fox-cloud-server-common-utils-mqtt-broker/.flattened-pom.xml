@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>cn.fox-tech</groupId>
   <artifactId>fox-cloud-server-common-utils-mqtt-broker</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <name>fox-cloud-server-common-utils-mqtt-broker</name>
   <description>fox-cloud-server-common-utils-mqtt-broker</description>
   <url>https://www.fox-tech.cn/fox-cloud-server-common/fox-cloud-server-common-utils/fox-cloud-server-common-utils-mqtt-broker</url>
