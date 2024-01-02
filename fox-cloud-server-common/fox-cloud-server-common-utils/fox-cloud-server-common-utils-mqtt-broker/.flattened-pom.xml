@@ -8,6 +8,18 @@
   <name>fox-cloud-server-common-utils-mqtt-broker</name>
   <description>fox-cloud-server-common-utils-mqtt-broker</description>
   <url>https://www.fox-tech.cn/fox-cloud-server-common/fox-cloud-server-common-utils/fox-cloud-server-common-utils-mqtt-broker</url>
+  <distributionManagement>
+    <repository>
+      <id>releases</id>
+      <name>Releases</name>
+      <url>http://jenkins.zkturing.com:8081/nexus/content/repositories/releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>snapshots</id>
+      <name>snapshots</name>
+      <url>http://jenkins.zkturing.com:8081/nexus/content/repositories/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
