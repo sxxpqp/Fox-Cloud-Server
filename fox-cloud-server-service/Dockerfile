@@ -5,9 +5,9 @@ MAINTAINER wangiegie@gmail.com
 ENV TZ=Asia/Shanghai
 ENV JAVA_OPTS="-Xms1024m -Xmx1024m -Djava.security.egd=file:/dev/./urandom"
 
-RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && mkdir -p /fox-cloud-server-service
+RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone 
 
-WORKDIR /fox-cloud-server-service
+WORKDIR /opt
 
 EXPOSE 9501
 
